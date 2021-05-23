@@ -4,6 +4,9 @@
 #
 
 test_description='git svn reset clears memoized caches'
+GIT_TEST_DEFAULT_INITIAL_BRANCH_NAME=main
+export GIT_TEST_DEFAULT_INITIAL_BRANCH_NAME
+
 . ./lib-git-svn.sh
 
 svn_ver="$(svn --version --quiet)"
@@ -59,7 +62,7 @@ test_expect_success 'fetch to merge-base (a)' '
 test_expect_success 'rebase looses SVN merge (m)' '
 	git svn rebase &&
 	git svn fetch &&
-	test 1 = $(git cat-file -p master|grep parent|wc -l)
+	test 1 = $(git cat-file -p main|grep parent|wc -l)
 '
 
 # git svn fetch creates correct history with merge commit
@@ -70,9 +73,9 @@ test_expect_success 'rebase looses SVN merge (m)' '
 #
 test_expect_success 'reset and fetch gets the SVN merge (m) correctly' '
 	git svn reset -r 3 &&
-	git reset --hard trunk &&
+	git reset --hard origin/trunk &&
 	git svn fetch &&
-	test 2 = $(git cat-file -p trunk|grep parent|wc -l)
+	test 2 = $(git cat-file -p origin/trunk|grep parent|wc -l)
 '
 
 test_done

@@ -34,19 +34,19 @@ EOF
 test_expect_success 'apply --stat output for binary file change' '
 	git diff >diff &&
 	git apply --stat --summary <diff >current &&
-	test_i18ncmp expected current
+	test_cmp expected current
 '
 
 test_expect_success 'diff --shortstat output for binary file change' '
 	tail -n 1 expected >expect &&
 	git diff --shortstat >current &&
-	test_i18ncmp expect current
+	test_cmp expect current
 '
 
 test_expect_success 'diff --shortstat output for binary file change only' '
 	echo " 1 file changed, 0 insertions(+), 0 deletions(-)" >expected &&
 	git diff --shortstat -- b >current &&
-	test_i18ncmp expected current
+	test_cmp expected current
 '
 
 test_expect_success 'apply --numstat notices binary file change' '
@@ -63,22 +63,22 @@ test_expect_success 'apply --numstat understands diff --binary format' '
 
 # apply needs to be able to skip the binary material correctly
 # in order to report the line number of a corrupt patch.
-test_expect_success C_LOCALE_OUTPUT 'apply detecting corrupt patch correctly' '
+test_expect_success 'apply detecting corrupt patch correctly' '
 	git diff >output &&
 	sed -e "s/-CIT/xCIT/" <output >broken &&
 	test_must_fail git apply --stat --summary broken 2>detected &&
-	detected=`cat detected` &&
-	detected=`expr "$detected" : "fatal.*at line \\([0-9]*\\)\$"` &&
-	detected=`sed -ne "${detected}p" broken` &&
+	detected=$(cat detected) &&
+	detected=$(expr "$detected" : "error.*at line \\([0-9]*\\)\$") &&
+	detected=$(sed -ne "${detected}p" broken) &&
 	test "$detected" = xCIT
 '
 
-test_expect_success C_LOCALE_OUTPUT 'apply detecting corrupt patch correctly' '
+test_expect_success 'apply detecting corrupt patch correctly' '
 	git diff --binary | sed -e "s/-CIT/xCIT/" >broken &&
 	test_must_fail git apply --stat --summary broken 2>detected &&
-	detected=`cat detected` &&
-	detected=`expr "$detected" : "fatal.*at line \\([0-9]*\\)\$"` &&
-	detected=`sed -ne "${detected}p" broken` &&
+	detected=$(cat detected) &&
+	detected=$(expr "$detected" : "error.*at line \\([0-9]*\\)\$") &&
+	detected=$(sed -ne "${detected}p" broken) &&
 	test "$detected" = xCIT
 '
 
@@ -88,7 +88,7 @@ test_expect_success 'initial commit' 'git commit -a -m initial'
 test_expect_success 'diff-index with --binary' '
 	echo AIT >a && mv b e && echo CIT >c && cat e >d &&
 	git update-index --add --remove a b c d e &&
-	tree0=`git write-tree` &&
+	tree0=$(git write-tree) &&
 	git diff --cached --binary >current &&
 	git apply --stat --summary current
 '
@@ -96,16 +96,14 @@ test_expect_success 'diff-index with --binary' '
 test_expect_success 'apply binary patch' '
 	git reset --hard &&
 	git apply --binary --index <current &&
-	tree1=`git write-tree` &&
+	tree1=$(git write-tree) &&
 	test "$tree1" = "$tree0"
 '
 
 test_expect_success 'diff --no-index with binary creation' '
 	echo Q | q_to_nul >binary &&
-	(: hide error code from diff, which just indicates differences
-	 git diff --binary --no-index /dev/null binary >current ||
-	 true
-	) &&
+	# hide error code from diff, which just indicates differences
+	test_might_fail git diff --binary --no-index /dev/null binary >current &&
 	rm binary &&
 	git apply --binary <current &&
 	echo Q >expected &&

@@ -27,12 +27,12 @@ test_git_reimport () {
 
 # Don't bother with permissions, be administrator by default
 test_expect_success 'setup config' '
-	git config --global remote.origin.mwLogin WikiAdmin &&
-	git config --global remote.origin.mwPassword AdminPass &&
+	git config --global remote.origin.mwLogin "$WIKI_ADMIN" &&
+	git config --global remote.origin.mwPassword "$WIKI_PASSW" &&
 	test_might_fail git config --global --unset remote.origin.mediaImport
 '
 
-test_expect_success 'git push can upload media (File:) files' '
+test_expect_failure 'git push can upload media (File:) files' '
 	wiki_reset &&
 	git clone mediawiki::'"$WIKI_URL"' mw_dir &&
 	(
@@ -48,14 +48,34 @@ test_expect_success 'git push can upload media (File:) files' '
 	)
 '
 
-test_expect_success 'git clone works on previously created wiki with media files' '
+test_expect_failure 'git clone works on previously created wiki with media files' '
 	test_when_finished "rm -rf mw_dir mw_dir_clone" &&
 	git clone -c remote.origin.mediaimport=true \
 		mediawiki::'"$WIKI_URL"' mw_dir_clone &&
 	test_cmp mw_dir_clone/Foo.txt mw_dir/Foo.txt &&
 	(cd mw_dir_clone && git checkout HEAD^) &&
 	(cd mw_dir && git checkout HEAD^) &&
+	test_path_is_file mw_dir_clone/Foo.txt &&
 	test_cmp mw_dir_clone/Foo.txt mw_dir/Foo.txt
+'
+
+test_expect_success 'git push can upload media (File:) files containing valid UTF-8' '
+	wiki_reset &&
+	git clone mediawiki::'"$WIKI_URL"' mw_dir &&
+	(
+		cd mw_dir &&
+		"$PERL_PATH" -e "print STDOUT \"UTF-8 content: éèàéê€.\";" >Bar.txt &&
+		git add Bar.txt &&
+		git commit -m "add a text file with UTF-8 content" &&
+		git push
+	)
+'
+
+test_expect_success 'git clone works on previously created wiki with media files containing valid UTF-8' '
+	test_when_finished "rm -rf mw_dir mw_dir_clone" &&
+	git clone -c remote.origin.mediaimport=true \
+		mediawiki::'"$WIKI_URL"' mw_dir_clone &&
+	test_cmp mw_dir_clone/Bar.txt mw_dir/Bar.txt
 '
 
 test_expect_success 'git push & pull work with locally renamed media files' '

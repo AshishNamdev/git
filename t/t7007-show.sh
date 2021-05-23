@@ -24,7 +24,8 @@ test_expect_success 'set up a bit of history' '
 	git tag -m "annotated tag" annotated &&
 	git checkout -b side HEAD^^ &&
 	test_commit side2 &&
-	test_commit side3
+	test_commit side3 &&
+	test_merge merge main3
 '
 
 test_expect_success 'showing two commits' '
@@ -35,6 +36,45 @@ test_expect_success 'showing two commits' '
 	git show main2 main3 >actual &&
 	grep ^commit actual >actual.filtered &&
 	test_cmp expect actual.filtered
+'
+
+test_expect_success 'showing a tree' '
+	cat >expected <<-EOF &&
+	tree main1:
+
+	main1.t
+	EOF
+	git show main1: >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'showing two trees' '
+	cat >expected <<-EOF &&
+	tree main1^{tree}
+
+	main1.t
+
+	tree main2^{tree}
+
+	main1.t
+	main2.t
+	EOF
+	git show main1^{tree} main2^{tree} >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'showing a trees is not recursive' '
+	git worktree add not-recursive main1 &&
+	mkdir not-recursive/a &&
+	test_commit -C not-recursive a/file &&
+	cat >expected <<-EOF &&
+	tree HEAD^{tree}
+
+	a/
+	main1.t
+	EOF
+	git -C not-recursive show HEAD^{tree} >actual &&
+	test_cmp expected actual
 '
 
 test_expect_success 'showing a range walks (linear)' '
@@ -109,8 +149,11 @@ test_expect_success 'showing range' '
 '
 
 test_expect_success '-s suppresses diff' '
-	echo main3 >expect &&
-	git show -s --format=%s main3 >actual &&
+	cat >expect <<-\EOF &&
+	merge
+	main3
+	EOF
+	git show -s --format=%s merge main3 >actual &&
 	test_cmp expect actual
 '
 
@@ -118,6 +161,10 @@ test_expect_success '--quiet suppresses diff' '
 	echo main3 >expect &&
 	git show --quiet --format=%s main3 >actual &&
 	test_cmp expect actual
+'
+
+test_expect_success 'show --graph is forbidden' '
+  test_must_fail git show --graph HEAD
 '
 
 test_done
